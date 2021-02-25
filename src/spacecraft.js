@@ -1,9 +1,12 @@
 import EventDispatcher from './eventDispatcher.js';
 
+const STRAIGHT = "STRAIGHT";
 const RIGHT = "RIGHT";
 const LEFT = "LEFT";
 const BANK = "BANK";
 const TURN = "TURN";
+const DRIFT = "DRIFT";
+const FLIP  = "FLIP";
 
 class Spacecraft extends Phaser.GameObjects.Sprite {
     constructor(config) {
@@ -13,10 +16,21 @@ class Spacecraft extends Phaser.GameObjects.Sprite {
         this.scaleY = this.scaleX;
         this.angle = config.angle;
         this.max_speed = config.max_speed;
+        this.acceleration = config.acceleration;
+        this.brake_thrusters = config.brake_thrusters;
         this.speed = config.speed;
         this.agility = config.agility;
+        this.hitpoints = config.hitpoints;
+        this.armor = config.armor;
+        this.shields = config.shields;
         this.movePath = [];
-        this.nextManeuver = {speed: this.speed, maneuver: "STRAIGHT", direction: ""};
+        this.nextManeuver = {speed: this.speed, maneuver: STRAIGHT, direction: ""};
+        this.status = "WAITING";
+
+        this.pilot_id = null;
+        if("pilot_id" in config) {
+            this.pilot_id = config.pilot_id;
+        }
 
         config.scene.add.existing(this);
         this.setInteractive();
@@ -32,6 +46,12 @@ class Spacecraft extends Phaser.GameObjects.Sprite {
 
     setNextManeuver(nextManeuver) {
         this.nextManeuver = nextManeuver;
+        this.status = "READY";
+    }
+
+    updateShipStatus() {
+        this.speed = this.nextManeuver.speed;
+        this.status = "WAITING";
     }
 
     calculateNewShipPath(movesPerTurn) {
@@ -40,7 +60,9 @@ class Spacecraft extends Phaser.GameObjects.Sprite {
         let maneuver = this.nextManeuver.maneuver;
 
         let rotationPerTick = 0;
-        if(maneuver == BANK) {
+        if(maneuver == DRIFT) {
+            rotationPerTick = 15.0 / movesPerTurn;
+        } else if(maneuver == BANK) {
             rotationPerTick = 45.0 / movesPerTurn;
         } else if (maneuver == TURN) {
             rotationPerTick = 90.0 / movesPerTurn;
@@ -60,6 +82,11 @@ class Spacecraft extends Phaser.GameObjects.Sprite {
             let y = last_y - (speed * Math.cos(rotationRadians));
 
             let newAngle = last_angle + rotationPerTick;
+            if(maneuver == FLIP && i == 2 * movesPerTurn/3) {
+                newAngle = last_angle + 180.0;
+                speed = 1;
+                this.nextManeuver.speed = 1;
+            }
             this.movePath.push({x: x, y: y, angle: newAngle});
             last_x = x;
             last_y = y;

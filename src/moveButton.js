@@ -12,7 +12,16 @@ class MoveButton extends Phaser.GameObjects.Image {
         if(this.direction == "LEFT") {
             this.setFlipX(true);
         }
+        this.speed_text = new Phaser.GameObjects.Text(
+            config.scene,
+            config.x,
+            config.y + 80,
+            this.speed,
+            {fontFamily: 'Arial'}
+        );
+        config.scene.add.existing(this.speed_text);
         config.scene.add.existing(this);
+        
         this.setInteractive();
         this.on('pointerdown', this.clicked, this);
     }
@@ -20,6 +29,11 @@ class MoveButton extends Phaser.GameObjects.Image {
     clicked() {
         this.emitter = EventDispatcher.getInstance();
         this.emitter.emit(this.action_name, this);
+    }
+
+    remove() {
+        this.speed_text.destroy();
+        this.destroy();
     }
 }
 
