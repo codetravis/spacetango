@@ -1,8 +1,6 @@
-# Phaser 3 Webpack Project Template
+# Phaser 3 Space Dogfight Game - Space Tango
 
-A Phaser 3 project template with ES6 support via [Babel 7](https://babeljs.io/) and [Webpack 4](https://webpack.js.org/) that includes hot-reloading for development and production-ready builds.
-
-This has been updated for Phaser 3.50.0 version and above.
+A Phaser 3 project with ES6 support via [Babel 7](https://babeljs.io/) and [Webpack 4](https://webpack.js.org/) that includes hot-reloading for development and production-ready builds.
 
 Loading images via JavaScript module `import` is also supported, although not recommended.
 

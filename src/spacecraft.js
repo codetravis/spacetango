@@ -14,6 +14,7 @@ class Spacecraft extends Phaser.GameObjects.Sprite {
         this.angle = config.angle;
         this.max_speed = config.max_speed;
         this.speed = config.speed;
+        this.agility = config.agility;
         this.movePath = [];
         this.nextManeuver = {speed: this.speed, maneuver: "STRAIGHT", direction: ""};
 
