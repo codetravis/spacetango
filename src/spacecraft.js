@@ -7,6 +7,8 @@ const BANK = "BANK";
 const TURN = "TURN";
 const DRIFT = "DRIFT";
 const FLIP  = "FLIP";
+const READY = "READY";
+const WAITING = "WAITING";
 
 class Spacecraft extends Phaser.GameObjects.Sprite {
     constructor(config) {
@@ -25,7 +27,7 @@ class Spacecraft extends Phaser.GameObjects.Sprite {
         this.shields = config.shields;
         this.movePath = [];
         this.nextManeuver = {speed: this.speed, maneuver: STRAIGHT, direction: ""};
-        this.status = "WAITING";
+        this.status = WAITING;
 
         this.pilot_id = null;
         if("pilot_id" in config) {
@@ -46,12 +48,12 @@ class Spacecraft extends Phaser.GameObjects.Sprite {
 
     setNextManeuver(nextManeuver) {
         this.nextManeuver = nextManeuver;
-        this.status = "READY";
+        this.status = READY;
     }
 
     updateShipStatus() {
         this.speed = this.nextManeuver.speed;
-        this.status = "WAITING";
+        this.status = WAITING;
     }
 
     calculateNewShipPath(movesPerTurn) {
@@ -61,7 +63,7 @@ class Spacecraft extends Phaser.GameObjects.Sprite {
 
         let rotationPerTick = 0;
         if(maneuver == DRIFT) {
-            rotationPerTick = 15.0 / movesPerTurn;
+            rotationPerTick = 10.0 / movesPerTurn;
         } else if(maneuver == BANK) {
             rotationPerTick = 45.0 / movesPerTurn;
         } else if (maneuver == TURN) {

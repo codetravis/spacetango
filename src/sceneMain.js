@@ -11,6 +11,10 @@ const TURN = "TURN";
 const STRAIGHT = "STRAIGHT";
 const DRIFT = "DRIFT";
 const FLIP  = "FLIP";
+const READY = "READY";
+const WAITING = "WAITING";
+const PLANNING = "PLANNING";
+const ACTION = "ACTION";
 const MOVES_PER_TURN = 60;
 
 class MainScene extends Phaser.Scene {
@@ -25,7 +29,7 @@ class MainScene extends Phaser.Scene {
         this.map_width = 600;
         this.map_height = 600;
         this.drawMapBoundry();
-        this.gameState = "PLANNING";
+        this.gameState = PLANNING;
         this.allSpacecraft = [];
         this.maneuverTable = new ManeuverTable();
         this.allSpacecraft.push(new Spacecraft({ 
@@ -63,7 +67,7 @@ class MainScene extends Phaser.Scene {
         this.visibleMoves = [];
         this.movePage = 0;
         this.actionCounter = 100;
-        this.gameState = "PLANNING";
+        this.gameState = PLANNING;
         this.currentSpacecraft = null;
 
         this.actionButton = new UIButton({
@@ -102,7 +106,7 @@ class MainScene extends Phaser.Scene {
     setActiveCraft(spacecraft) {
         this.selectedSpacecraft = spacecraft;
         
-        if(this.gameState == "PLANNING") {
+        if(this.gameState == PLANNING) {
             // show move selections for selected ship
             this.cleanUpMoveSelector();
             this.showPossibleMoves();
@@ -222,13 +226,13 @@ class MainScene extends Phaser.Scene {
         let can_continue = true;
         this.allSpacecraft.forEach(function(spacecraft) {
             spacecraft.calculateNewShipPath(MOVES_PER_TURN);
-            if(spacecraft.status == "WAITING" && spacecraft.active) {
+            if(spacecraft.status == WAITING && spacecraft.active) {
                 can_continue = false;
             }
         });
 
         if(can_continue) {
-            this.gameState = "ACTION";
+            this.gameState = ACTION;
             this.actionCounter = 100;
         }
     }
@@ -242,17 +246,17 @@ class MainScene extends Phaser.Scene {
     }
 
     update() {
-        if(this.actionCounter > 0 && this.gameState == "ACTION") {
+        if(this.actionCounter > 0 && this.gameState == ACTION) {
             this.actionCounter -= 1;
             this.allSpacecraft.forEach(function(spacecraft) {
                 spacecraft.updateShipOnPath();
             });
-        } else if(this.gameState !== "PLANNING") {
+        } else if(this.gameState !== PLANNING) {
             this.checkOutOfBounds();
             this.allSpacecraft.forEach(function(spacecraft) {
                 spacecraft.updateShipStatus();
             });
-            this.gameState = "PLANNING";
+            this.gameState = PLANNING;
             this.actionCounter = 0;
         }
     }
