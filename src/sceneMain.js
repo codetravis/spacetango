@@ -297,7 +297,7 @@ class MainScene extends Phaser.Scene {
         // get the right side of the spacecraft
         let right_angle_radians = (spacecraft.angle + 90) * Math.PI / 180.0;
         let right_x = spacecraft.x + (spacecraft.size * 16 * Math.sin(right_angle_radians));
-        let right_y = spacecraft.y - (spacecraft.size * 16 * Math.sin(right_angle_radians));
+        let right_y = spacecraft.y - (spacecraft.size * 16 * Math.cos(right_angle_radians));
 
         let potential_targets = [];
 
