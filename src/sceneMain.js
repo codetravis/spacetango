@@ -94,6 +94,17 @@ class MainScene extends Phaser.Scene {
                     damage: 3,
                     range: 100
                 },
+                {
+                    name: "Medium Projectile Cannon",
+                    type: PROJECTILE,
+                    use_ammo: true,
+                    ammo: 100,
+                    salvo_size: 5,
+                    charge: 0,
+                    recharge_rate: 2,
+                    damage: 3,
+                    range: 100
+                },
             ],
          }));
         this.visibleMoves = [];
@@ -312,7 +323,7 @@ class MainScene extends Phaser.Scene {
                 (left_slope < 0 && right_slope > 0)) {
 
                     potential_targets.push(target);
-                    console.log("Potential target found " + left_slope + " " + right_slope);
+                    //console.log("Potential target found " + left_slope + " " + right_slope);
                     return;
                 }
             }
@@ -344,7 +355,7 @@ class MainScene extends Phaser.Scene {
                 if(weapon.range >= final_target_distance) {
                     if(!weapon.use_ammo || weapon.ammo > 0) {
                         spacecraft.fireWeapon(j);
-                        console.log("Spacecraft attacked target with weapon " + weapon.name);
+                        console.log("Spacecraft " + spacecraft.id + "attacked target " + target.id + " with weapon " + weapon.name);
                         // roll for hit
                         let hit_chance = Math.random();
                         // roll for defender evade
@@ -352,7 +363,7 @@ class MainScene extends Phaser.Scene {
                         // assign damage to defender on hit
                         if(hit_chance > evade_chance) {
                             final_target.takeDamage(weapon.damage * weapon.salvo_size);
-                            console.log("Target at range " + final_target_distance + " took damage");
+                            //console.log("Target at range " + final_target_distance + " took damage");
                         }
                     }
                 }
