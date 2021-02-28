@@ -59,7 +59,7 @@ class MainScene extends Phaser.Scene {
                     ammo: 0,
                     salvo_size: 1,
                     charge: 0,
-                    recharge_rate: 5,
+                    recharge_rate: 1,
                     damage: 10,
                     range: 200,
                 },
@@ -90,7 +90,7 @@ class MainScene extends Phaser.Scene {
                     ammo: 100,
                     salvo_size: 5,
                     charge: 0,
-                    recharge_rate: 20,
+                    recharge_rate: 2,
                     damage: 3,
                     range: 100
                 },
@@ -277,27 +277,18 @@ class MainScene extends Phaser.Scene {
         }.bind(this));
     }
 
-    sideOfSlope(ship_side, angle, target) {
+    sideOfSlope(ship_side, angle, target_point) {
         let slope = { x: ship_side.x + 100 * Math.sin(angle), y: ship_side.y - 100 * Math.cos(angle) };
 
         //let bracket_y = this.add.line(0, 0, ship_side.x, ship_side.y, slope.x, slope.y, 0xffffff);
         //bracket_y.setOrigin(0, 0);
 
         // if positive, then on the right side of the slope, if negative, the left side
-        return (slope.x - ship_side.x) * (target.y - ship_side.y) - (slope.y - ship_side.y) * (target.x - ship_side.x);
+        return (slope.x - ship_side.x) * (target_point.y - ship_side.y) - (slope.y - ship_side.y) * (target_point.x - ship_side.x);
     }
 
     attackClosestTarget(spacecraft) {
         //console.log("Searching for targets");
-        // get the left side of the spacecraft
-        let left_angle_radians = (spacecraft.angle - 90) * Math.PI / 180.0;
-        let left_x = spacecraft.x + (spacecraft.size * 16 * Math.sin(left_angle_radians));
-        let left_y = spacecraft.y - (spacecraft.size * 16 * Math.cos(left_angle_radians));
-
-        // get the right side of the spacecraft
-        let right_angle_radians = (spacecraft.angle + 90) * Math.PI / 180.0;
-        let right_x = spacecraft.x + (spacecraft.size * 16 * Math.sin(right_angle_radians));
-        let right_y = spacecraft.y - (spacecraft.size * 16 * Math.cos(right_angle_radians));
 
         let potential_targets = [];
 
@@ -310,17 +301,20 @@ class MainScene extends Phaser.Scene {
                 return;
             }
 
-            // find out if the target is to right or left side of a line extending from either side of the current spacecraft
-            let left_slope = this.sideOfSlope({x: left_x, y: left_y}, spacecraft.angle * Math.PI/180.0, target);
-            let right_slope = this.sideOfSlope({x: right_x, y: right_y}, spacecraft.angle * Math.PI/180.0, target);
-            // if the target is to the right of the left line and to the left of the right line (or vice versa)
-            // then it is between the lines and a potential target
-            //console.log("Target position slopes " + left_slope + " " + right_slope);
-            if((left_slope > 0 && right_slope < 0) ||
-               (left_slope < 0 && right_slope > 0)) {
+            for(let k = 0; k < target.target_points.length; k++) {
+                // find out if one of the edgees of the target is to right or left side of a line extending from either side of the current spacecraft
+                let left_slope = this.sideOfSlope(spacecraft.left_side, spacecraft.angle * Math.PI/180.0, target.target_points[k]);
+                let right_slope = this.sideOfSlope(spacecraft.right_side, spacecraft.angle * Math.PI/180.0, target.target_points[k]);
+                // if the target is to the right of the left line and to the left of the right line (or vice versa)
+                // then it is between the lines and a potential target
+                //console.log("Target position slopes " + left_slope + " " + right_slope);
+                if((left_slope > 0 && right_slope < 0) ||
+                (left_slope < 0 && right_slope > 0)) {
 
-                potential_targets.push(target);
-                console.log("Potential target found " + left_slope + " " + right_slope);
+                    potential_targets.push(target);
+                    console.log("Potential target found " + left_slope + " " + right_slope);
+                    return;
+                }
             }
         }.bind(this));
 

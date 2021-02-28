@@ -31,6 +31,7 @@ class Spacecraft extends Phaser.GameObjects.Sprite {
         this.weapons = config.weapons;
         this.movePath = [];
         this.nextManeuver = {speed: this.speed, maneuver: STRAIGHT, direction: ""};
+        this.calculateTargetingPoints();
         this.status = WAITING;
 
         this.pilot_id = null;
@@ -48,6 +49,29 @@ class Spacecraft extends Phaser.GameObjects.Sprite {
         // alternatively draw a green square behind this?
         this.emitter = EventDispatcher.getInstance();
         this.emitter.emit("CRAFT_CLICKED", this);
+    }
+
+    calculateTargetingPoints() {
+        this.target_points = [{x: this.x, y: this.y}];
+
+        for(let i = 0; i < 180; i += 45) {
+            // get the left side of the spacecraft
+            let left_angle_radians = (this.angle - i) * Math.PI / 180.0;
+            let left_x = this.x + (this.size * 16 * Math.sin(left_angle_radians));
+            let left_y = this.y - (this.size * 16 * Math.cos(left_angle_radians));
+            this.target_points.push({ x: left_x, y: left_y });
+
+            // get the right side of the this
+            let right_angle_radians = (this.angle + i) * Math.PI / 180.0;
+            let right_x = this.x + (this.size * 16 * Math.sin(right_angle_radians));
+            let right_y = this.y - (this.size * 16 * Math.cos(right_angle_radians));
+            this.target_points.push({ x: right_x, y: right_y });
+
+            if(i === 90) {
+                this.left_side = { x: left_x, y: left_y };
+                this.right_side = { x: right_x, y: right_y };
+            }
+        }
     }
 
     setNextManeuver(nextManeuver) {
@@ -152,6 +176,7 @@ class Spacecraft extends Phaser.GameObjects.Sprite {
             this.x = nextMove.x;
             this.y = nextMove.y;
             this.angle = nextMove.angle;
+            this.calculateTargetingPoints();
             this.weapons.forEach(function (weapon) {
                 if(weapon.charge < 100) {
                     weapon.charge = Math.min(100, weapon.charge + weapon.recharge_rate);
