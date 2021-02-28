@@ -15,6 +15,8 @@ const READY = "READY";
 const WAITING = "WAITING";
 const PLANNING = "PLANNING";
 const ACTION = "ACTION";
+const ENERGY = "ENERGY";
+const PROJECTILE = "PROJECTILE";
 const MOVES_PER_TURN = 60;
 
 class MainScene extends Phaser.Scene {
@@ -34,9 +36,11 @@ class MainScene extends Phaser.Scene {
         this.maneuverTable = new ManeuverTable();
         this.allSpacecraft.push(new Spacecraft({ 
             scene: this, 
+            id: 1,
             x: 500, 
             y: 100, 
             key: "test_fighter", 
+            team: 1,
             angle: 180, 
             size: 1, 
             speed: 1, 
@@ -46,13 +50,28 @@ class MainScene extends Phaser.Scene {
             agility: 3,
             hitpoints: 100,
             armor: 50,
-            shields: 50
+            shields: 50,
+            weapons: [
+                {
+                    name: "Light Laser Cannon",
+                    type: ENERGY,
+                    use_ammo: false,
+                    ammo: 0,
+                    salvo_size: 1,
+                    charge: 0,
+                    recharge_rate: 5,
+                    damage: 10,
+                    range: 200,
+                },
+            ],
          }));
         this.allSpacecraft.push(new Spacecraft({ 
             scene: this, 
+            id: 2,
             x: 100, 
             y: 500, 
             key: "test_old_fighter", 
+            team: 2,
             angle: 0, 
             size: 2, 
             speed: 1, 
@@ -62,11 +81,24 @@ class MainScene extends Phaser.Scene {
             agility: 2,
             hitpoints: 200,
             armor: 100,
-            shields: 20
+            shields: 20,
+            weapons: [
+                {
+                    name: "Medium Projectile Cannon",
+                    type: PROJECTILE,
+                    use_ammo: true,
+                    ammo: 100,
+                    salvo_size: 5,
+                    charge: 0,
+                    recharge_rate: 20,
+                    damage: 3,
+                    range: 100
+                },
+            ],
          }));
         this.visibleMoves = [];
         this.movePage = 0;
-        this.actionCounter = 100;
+        this.actionCounter = 61;
         this.gameState = PLANNING;
         this.currentSpacecraft = null;
 
@@ -233,7 +265,7 @@ class MainScene extends Phaser.Scene {
 
         if(can_continue) {
             this.gameState = ACTION;
-            this.actionCounter = 100;
+            this.actionCounter = 61;
         }
     }
 
@@ -245,12 +277,110 @@ class MainScene extends Phaser.Scene {
         }.bind(this));
     }
 
+    sideOfSlope(ship_side, angle, target) {
+        let slope = { x: ship_side.x + 100 * Math.sin(angle), y: ship_side.y - 100 * Math.cos(angle) };
+
+        //let bracket_y = this.add.line(0, 0, ship_side.x, ship_side.y, slope.x, slope.y, 0xffffff);
+        //bracket_y.setOrigin(0, 0);
+
+        // if positive, then on the right side of the slope, if negative, the left side
+        return (slope.x - ship_side.x) * (target.y - ship_side.y) - (slope.y - ship_side.y) * (target.x - ship_side.x);
+    }
+
+    attackClosestTarget(spacecraft) {
+        //console.log("Searching for targets");
+        // get the left side of the spacecraft
+        let left_angle_radians = (spacecraft.angle - 90) * Math.PI / 180.0;
+        let left_x = spacecraft.x + (spacecraft.size * 16 * Math.sin(left_angle_radians));
+        let left_y = spacecraft.y - (spacecraft.size * 16 * Math.cos(left_angle_radians));
+
+        // get the right side of the spacecraft
+        let right_angle_radians = (spacecraft.angle + 90) * Math.PI / 180.0;
+        let right_x = spacecraft.x + (spacecraft.size * 16 * Math.sin(right_angle_radians));
+        let right_y = spacecraft.y - (spacecraft.size * 16 * Math.sin(right_angle_radians));
+
+        let potential_targets = [];
+
+        this.allSpacecraft.forEach(function(target) {
+            if(target.id === spacecraft.id) {
+                return;
+            }
+            // add skip if target is same team as attacker
+            if(target.team === spacecraft.team && target.team !== 0) {
+                return;
+            }
+
+            // find out if the target is to right or left side of a line extending from either side of the current spacecraft
+            let left_slope = this.sideOfSlope({x: left_x, y: left_y}, spacecraft.angle * Math.PI/180.0, target);
+            let right_slope = this.sideOfSlope({x: right_x, y: right_y}, spacecraft.angle * Math.PI/180.0, target);
+            // if the target is to the right of the left line and to the left of the right line (or vice versa)
+            // then it is between the lines and a potential target
+            //console.log("Target position slopes " + left_slope + " " + right_slope);
+            if((left_slope > 0 && right_slope < 0) ||
+               (left_slope < 0 && right_slope > 0)) {
+
+                potential_targets.push(target);
+                console.log("Potential target found " + left_slope + " " + right_slope);
+            }
+        }.bind(this));
+
+        if(potential_targets.length === 0) {
+            // no targets found
+            return;
+        }
+
+        let final_target = potential_targets[0];
+        let final_target_distance = this.getDistanceBetweenPoints(spacecraft, final_target);
+        // find the closest enemy target
+        for(let i = 0; i < potential_targets.length; i++) {
+            let evaluate_target = potential_targets[i];
+            let distance_to_target = this.getDistanceBetweenPoints(spacecraft, evaluate_target);
+            if(distance_to_target < final_target_distance) {
+                final_target = evaluate_target;
+                final_target_distance = distance_to_target;
+            }
+        }
+
+        // perform attack against final target
+        
+        for(let j = 0; j < spacecraft.weapons.length; j++) {
+            // fire fully charged weapons
+            let weapon = spacecraft.weapons[j];
+            if(weapon.charge == 100) {
+                if(weapon.range >= final_target_distance) {
+                    if(!weapon.use_ammo || weapon.ammo > 0) {
+                        spacecraft.fireWeapon(j);
+                        console.log("Spacecraft attacked target with weapon " + weapon.name);
+                        // roll for hit
+                        let hit_chance = Math.random();
+                        // roll for defender evade
+                        let evade_chance = Math.random();
+                        // assign damage to defender on hit
+                        if(hit_chance > evade_chance) {
+                            final_target.takeDamage(weapon.damage * weapon.salvo_size);
+                            console.log("Target at range " + final_target_distance + " took damage");
+                        }
+                    }
+                }
+            }
+            
+        }
+
+    }
+
+    getDistanceBetweenPoints(begin, end) {
+        return Math.floor(Math.sqrt(Math.pow(end.x - begin.x, 2) + Math.pow(end.y - begin.y, 2)));
+    }
+
     update() {
         if(this.actionCounter > 0 && this.gameState == ACTION) {
             this.actionCounter -= 1;
             this.allSpacecraft.forEach(function(spacecraft) {
                 spacecraft.updateShipOnPath();
             });
+            this.allSpacecraft.forEach(function(spacecraft) {
+                this.attackClosestTarget(spacecraft);
+            }.bind(this));
         } else if(this.gameState !== PLANNING) {
             this.checkOutOfBounds();
             this.allSpacecraft.forEach(function(spacecraft) {
