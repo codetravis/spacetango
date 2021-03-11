@@ -54,6 +54,17 @@ class Spacecraft extends Phaser.GameObjects.Sprite {
     calculateTargetingPoints() {
         this.target_points = [{x: this.x, y: this.y}];
 
+        // calculate the left and right sides of the targeting corridor
+        this.left_side = { 
+            x: this.x + (16 * Math.sin((this.angle - 90) * Math.PI / 180.0)), 
+            y: this.y - (16 * Math.cos((this.angle - 90) * Math.PI / 180.0)) 
+        };
+        this.right_side = { 
+            x: this.x + (16 * Math.sin((this.angle + 90) * Math.PI / 180.0)), 
+            y: this.y - (16 * Math.cos((this.angle + 90) * Math.PI / 180.0)) 
+        };
+        
+        // calculate the different edges around the craft for checking if they are in anothers targeting corridor
         for(let i = 0; i < 180; i += 45) {
             // get the left side of the spacecraft
             let left_angle_radians = (this.angle - i) * Math.PI / 180.0;
@@ -66,11 +77,6 @@ class Spacecraft extends Phaser.GameObjects.Sprite {
             let right_x = this.x + (this.size * 16 * Math.sin(right_angle_radians));
             let right_y = this.y - (this.size * 16 * Math.cos(right_angle_radians));
             this.target_points.push({ x: right_x, y: right_y });
-
-            if(i === 90) {
-                this.left_side = { x: left_x, y: left_y };
-                this.right_side = { x: right_x, y: right_y };
-            }
         }
     }
 
@@ -112,10 +118,16 @@ class Spacecraft extends Phaser.GameObjects.Sprite {
             let y = last_y - (speed * Math.cos(rotationRadians));
 
             let newAngle = last_angle + rotationPerTick;
+
             if(maneuver == FLIP && i == 2 * movesPerTurn/3) {
                 newAngle = last_angle + 180.0;
                 speed = 1;
                 this.nextManeuver.speed = 1;
+            }
+
+            newAngle = newAngle % 360;
+            if(newAngle < 0) {
+                newAngle += 360.0;
             }
             this.movePath.push({x: x, y: y, angle: newAngle});
             last_x = x;

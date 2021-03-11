@@ -38,10 +38,10 @@ class MainScene extends Phaser.Scene {
             scene: this, 
             id: 1,
             x: 500, 
-            y: 100, 
+            y: 200, 
             key: "test_fighter", 
             team: 1,
-            angle: 180, 
+            angle: 179.99, 
             size: 1, 
             speed: 1, 
             max_speed: 4,
@@ -59,7 +59,7 @@ class MainScene extends Phaser.Scene {
                     ammo: 0,
                     salvo_size: 1,
                     charge: 0,
-                    recharge_rate: 1,
+                    recharge_rate: 100,
                     damage: 10,
                     range: 200,
                 },
@@ -68,11 +68,11 @@ class MainScene extends Phaser.Scene {
         this.allSpacecraft.push(new Spacecraft({ 
             scene: this, 
             id: 2,
-            x: 100, 
-            y: 500, 
+            x: 500, 
+            y: 100, 
             key: "test_old_fighter", 
             team: 2,
-            angle: 0, 
+            angle: 180, 
             size: 2, 
             speed: 1, 
             max_speed: 2,
@@ -148,6 +148,7 @@ class MainScene extends Phaser.Scene {
 
     setActiveCraft(spacecraft) {
         this.selectedSpacecraft = spacecraft;
+        console.log(spacecraft.angle);
         
         if(this.gameState == PLANNING) {
             // show move selections for selected ship
@@ -288,14 +289,14 @@ class MainScene extends Phaser.Scene {
         }.bind(this));
     }
 
-    sideOfSlope(ship_side, angle, target_point) {
-        let slope = { x: ship_side.x + 100 * Math.sin(angle), y: ship_side.y - 100 * Math.cos(angle) };
+    sideOfSlope(start_point, angle, target_point) {
+        let slope = { x: start_point.x + 100 * Math.sin(angle), y: start_point.y - 100 * Math.cos(angle) };
 
         //let bracket_y = this.add.line(0, 0, ship_side.x, ship_side.y, slope.x, slope.y, 0xffffff);
         //bracket_y.setOrigin(0, 0);
 
         // if positive, then on the right side of the slope, if negative, the left side
-        return (slope.x - ship_side.x) * (target_point.y - ship_side.y) - (slope.y - ship_side.y) * (target_point.x - ship_side.x);
+        return (slope.x - start_point.x) * (target_point.y - start_point.y) - (slope.y - start_point.y) * (target_point.x - start_point.x);
     }
 
     attackClosestTarget(spacecraft) {
@@ -312,19 +313,31 @@ class MainScene extends Phaser.Scene {
                 return;
             }
 
+            let angle_radians = spacecraft.angle * Math.PI/180.0;
             for(let k = 0; k < target.target_points.length; k++) {
                 // find out if one of the edgees of the target is to right or left side of a line extending from either side of the current spacecraft
-                let left_slope = this.sideOfSlope(spacecraft.left_side, spacecraft.angle * Math.PI/180.0, target.target_points[k]);
-                let right_slope = this.sideOfSlope(spacecraft.right_side, spacecraft.angle * Math.PI/180.0, target.target_points[k]);
+                let target_point = target.target_points[k];
+                let left_slope = this.sideOfSlope(spacecraft.left_side, angle_radians, target_point);
+                let right_slope = this.sideOfSlope(spacecraft.right_side, angle_radians, target_point);
                 // if the target is to the right of the left line and to the left of the right line (or vice versa)
                 // then it is between the lines and a potential target
-                //console.log("Target position slopes " + left_slope + " " + right_slope);
-                if((left_slope > 0 && right_slope < 0) ||
-                (left_slope < 0 && right_slope > 0)) {
 
-                    potential_targets.push(target);
-                    //console.log("Potential target found " + left_slope + " " + right_slope);
-                    return;
+                // phaser auto keeps sprite angles betweent -180 and +179.9
+                // check that the target is in front of attacker
+                let front_point = { x: spacecraft.x + 100 * Math.sin(angle_radians), y: spacecraft.y - 100 * Math.cos(angle_radians) }
+                let front_slope = this.sideOfSlope(spacecraft, (spacecraft.angle + 90) * Math.PI/180.0, front_point);
+                let target_slope = this.sideOfSlope(spacecraft, (spacecraft.angle + 90) * Math.PI/180.0, target_point);
+                //console.log(spacecraft.id + " Front slope " + front_slope + " target slope " + target_slope);
+                //console.log("front point " + front_point.x + " " + front_point.y);
+                if((front_slope >= 0 && target_slope >= 0) || (front_slope <= 0 && target_slope <= 0)) {
+                    // check that the target is in the firing arc / lane
+                    if((left_slope < 0 && right_slope > 0) ||
+                    (left_slope > 0 && right_slope < 0)) {
+                        //console.log("Adding potential target");
+                        potential_targets.push(target);
+                        //console.log("Potential target found " + left_slope + " " + right_slope);
+                        return;
+                    }
                 }
             }
         }.bind(this));
@@ -355,11 +368,11 @@ class MainScene extends Phaser.Scene {
                 if(weapon.range >= final_target_distance) {
                     if(!weapon.use_ammo || weapon.ammo > 0) {
                         spacecraft.fireWeapon(j);
-                        console.log("Spacecraft " + spacecraft.id + "attacked target " + target.id + " with weapon " + weapon.name);
+                        console.log("Spacecraft " + spacecraft.id + "attacked target " + final_target.id + " with weapon " + weapon.name);
                         // roll for hit
-                        let hit_chance = Math.random();
+                        let hit_chance = 1; //Math.random() * final_target.size;
                         // roll for defender evade
-                        let evade_chance = Math.random();
+                        let evade_chance = 0; //Math.random();
                         // assign damage to defender on hit
                         if(hit_chance > evade_chance) {
                             final_target.takeDamage(weapon.damage * weapon.salvo_size);
@@ -380,12 +393,25 @@ class MainScene extends Phaser.Scene {
     update() {
         if(this.actionCounter > 0 && this.gameState == ACTION) {
             this.actionCounter -= 1;
+            // all ships move
             this.allSpacecraft.forEach(function(spacecraft) {
-                spacecraft.updateShipOnPath();
+                if(spacecraft.hitpoints > 0) {
+                    spacecraft.updateShipOnPath();
+                }
             });
+            // all ships attempt attacks
             this.allSpacecraft.forEach(function(spacecraft) {
-                this.attackClosestTarget(spacecraft);
+                if(spacecraft.hitpoints > 0) {
+                    this.attackClosestTarget(spacecraft);
+                }
             }.bind(this));
+            // destroyed ships are removed
+            this.allSpacecraft.forEach(function(spacecraft) {
+                if(spacecraft.hitpoints <= 0) {
+                    spacecraft.destroy();
+                }
+            });
+
         } else if(this.gameState !== PLANNING) {
             this.checkOutOfBounds();
             this.allSpacecraft.forEach(function(spacecraft) {
