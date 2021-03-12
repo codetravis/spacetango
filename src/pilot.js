@@ -28,6 +28,10 @@ class Pilot extends Phaser.GameObjects.Sprite {
         this.strain = Math.max(0, this.strain - amount);
     }
 
+    getMaxStrain() {
+        return this.guts;
+    }
+
     clicked() {
         // switch image to selected?
         // alternatively draw a green square behind this?

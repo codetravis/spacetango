@@ -1,5 +1,6 @@
 import EventDispatcher from './eventDispatcher.js';
 import Spacecraft from './spacecraft.js';
+import Pilot from './pilot.js';
 import MoveButton from './moveButton.js';
 import UIButton from './uiButton.js';
 import ManeuverTable from './maneuverTable.js';
@@ -28,85 +29,15 @@ class MainScene extends Phaser.Scene {
     }
 
     create() {
+        this.current_player = 1;
         this.map_width = 600;
         this.map_height = 600;
         this.drawMapBoundry();
         this.gameState = PLANNING;
         this.allSpacecraft = [];
+        this.allPilots = [];
         this.maneuverTable = new ManeuverTable();
-        this.allSpacecraft.push(new Spacecraft({ 
-            scene: this, 
-            id: 1,
-            x: 500, 
-            y: 200, 
-            key: "test_fighter", 
-            team: 1,
-            angle: 179.99, 
-            size: 1, 
-            speed: 1, 
-            max_speed: 4,
-            acceleration: 2,
-            brake_thrusters: 1,
-            agility: 3,
-            hitpoints: 100,
-            armor: 50,
-            shields: 50,
-            weapons: [
-                {
-                    name: "Light Laser Cannon",
-                    type: ENERGY,
-                    use_ammo: false,
-                    ammo: 0,
-                    salvo_size: 1,
-                    charge: 0,
-                    recharge_rate: 100,
-                    damage: 10,
-                    range: 200,
-                },
-            ],
-         }));
-        this.allSpacecraft.push(new Spacecraft({ 
-            scene: this, 
-            id: 2,
-            x: 500, 
-            y: 100, 
-            key: "test_old_fighter", 
-            team: 2,
-            angle: 180, 
-            size: 2, 
-            speed: 1, 
-            max_speed: 2,
-            acceleration: 1, 
-            brake_thrusters: 1,
-            agility: 2,
-            hitpoints: 200,
-            armor: 100,
-            shields: 20,
-            weapons: [
-                {
-                    name: "Medium Projectile Cannon",
-                    type: PROJECTILE,
-                    use_ammo: true,
-                    ammo: 100,
-                    salvo_size: 5,
-                    charge: 0,
-                    recharge_rate: 2,
-                    damage: 3,
-                    range: 100
-                },
-                {
-                    name: "Medium Projectile Cannon",
-                    type: PROJECTILE,
-                    use_ammo: true,
-                    ammo: 100,
-                    salvo_size: 5,
-                    charge: 0,
-                    recharge_rate: 2,
-                    damage: 3,
-                    range: 100
-                },
-            ],
-         }));
+        this.createTestUnits();
         this.visibleMoves = [];
         this.movePage = 0;
         this.actionCounter = 61;
@@ -131,6 +62,8 @@ class MainScene extends Phaser.Scene {
         this.emitter.on("NEXT_MOVES_CLICKED", this.updateMovePage.bind(this));
     }
 
+    
+
     drawMapBoundry() {
         let top_line = this.add.line(0, 0, 50, 1, this.map_width + 50, 1, 0xffffff);
         top_line.setOrigin(0, 0);
@@ -147,13 +80,14 @@ class MainScene extends Phaser.Scene {
     }
 
     setActiveCraft(spacecraft) {
-        this.selectedSpacecraft = spacecraft;
-        console.log(spacecraft.angle);
-        
-        if(this.gameState == PLANNING) {
-            // show move selections for selected ship
-            this.cleanUpMoveSelector();
-            this.showPossibleMoves();
+        if(spacecraft.team == this.current_player) {
+            this.selectedSpacecraft = spacecraft;
+            
+            if(this.gameState == PLANNING) {
+                // show move selections for selected ship
+                this.cleanUpMoveSelector();
+                this.showPossibleMoves();
+            }
         }
     }
 
@@ -213,16 +147,25 @@ class MainScene extends Phaser.Scene {
         }
     }
 
+    craftCanPerformManeuver(spacecraft, maneuver) {
+        return spacecraft.agility >= maneuver.agility_required - 2 &&
+                (spacecraft.speed == maneuver.speed || 
+                    (spacecraft.speed - spacecraft.brake_thrusters <= maneuver.speed && 
+                        spacecraft.speed + spacecraft.acceleration >= maneuver.speed));
+    }
+
+    pilotCanPerformManeuver(pilot, maneuver) {
+        return pilot.control >= maneuver.control_required;
+    }
+
     generateCraftManeuverList(spacecraft) {
         let maneuvers = [];
         // load all possible moves
         let all_maneuvers = this.maneuverTable.listManeuvers();
-        // filter by speed and agility
+        // filter by spacecraft agility/speed and pilot control
         for(let i = 0; i < all_maneuvers.length; i++) {
-            if(spacecraft.agility >= all_maneuvers[i].agility_required - 2 &&
-                (spacecraft.speed == all_maneuvers[i].speed || 
-                    (spacecraft.speed - spacecraft.brake_thrusters <= all_maneuvers[i].speed && 
-                        spacecraft.speed + spacecraft.acceleration >= all_maneuvers[i].speed))) {
+            if( this.craftCanPerformManeuver(spacecraft, all_maneuvers[i]) && 
+                this.pilotCanPerformManeuver(spacecraft.pilot, all_maneuvers[i]) ) {
                 maneuvers.push(all_maneuvers[i]);
             }
         }
@@ -264,20 +207,39 @@ class MainScene extends Phaser.Scene {
         this.movePage = 0;
     }
 
+    raiseOverlappedShips() {
+        this.allSpacecraft.forEach(function(spacecraft) {
+            if(spacecraft.team == this.current_player) {
+                spacecraft.depth = 2;
+            } else {
+                spacecraft.depth = 1;
+            }
+        }.bind(this));
+    }
+
     startActionState() {
         this.cleanUpMoveSelector();
         this.movePage = 0;
         let can_continue = true;
         this.allSpacecraft.forEach(function(spacecraft) {
-            spacecraft.calculateNewShipPath(MOVES_PER_TURN);
-            if(spacecraft.status == WAITING && spacecraft.active) {
-                can_continue = false;
+            if(spacecraft.team == this.current_player) {
+                spacecraft.calculateNewShipPath(MOVES_PER_TURN);
+                if(spacecraft.status == WAITING && spacecraft.active) {
+                    can_continue = false;
+                }
             }
-        });
+        }.bind(this));
 
         if(can_continue) {
-            this.gameState = ACTION;
-            this.actionCounter = 61;
+            if(this.current_player == 2) {
+                this.gameState = ACTION;
+                this.actionCounter = 61;
+                this.current_player = 1;
+                this.raiseOverlappedShips();
+            } else {
+                this.current_player = 2;
+                this.raiseOverlappedShips();
+            }
         }
     }
 
@@ -420,6 +382,113 @@ class MainScene extends Phaser.Scene {
             this.gameState = PLANNING;
             this.actionCounter = 0;
         }
+    }
+
+    createTestUnits() {
+        this.allPilots.push(new Pilot({
+            scene: this,
+            id: 1,
+            x: 2000,
+            y: 2000,
+            key: "default_pilot",
+            level: 1,
+            experience: 0,
+            control: 4,
+            gunnery: 1,
+            guts: 1,
+            composure: 1
+        }));
+        this.allPilots.push(new Pilot({
+            scene: this,
+            id: 2,
+            x: 2064,
+            y: 2000,
+            key: "default_pilot",
+            level: 2,
+            experience: 0,
+            control: 1,
+            gunnery: 1,
+            guts: 1,
+            composure: 2
+        }));
+
+        this.allSpacecraft.push(new Spacecraft({ 
+            scene: this, 
+            id: 1,
+            x: 500, 
+            y: 200, 
+            key: "test_fighter", 
+            team: 1,
+            angle: 179.99, 
+            size: 1, 
+            speed: 1, 
+            max_speed: 4,
+            acceleration: 2,
+            brake_thrusters: 1,
+            agility: 3,
+            hitpoints: 100,
+            armor: 50,
+            shields: 50,
+            weapons: [
+                {
+                    name: "Light Laser Cannon",
+                    type: ENERGY,
+                    use_ammo: false,
+                    ammo: 0,
+                    salvo_size: 1,
+                    charge: 0,
+                    recharge_rate: 4,
+                    damage: 10,
+                    range: 200,
+                },
+            ],
+        }));
+        this.allSpacecraft[0].setPilot(this.allPilots[0]);
+
+        this.allSpacecraft.push(new Spacecraft({ 
+            scene: this, 
+            id: 2,
+            x: 500, 
+            y: 100, 
+            key: "test_old_fighter", 
+            team: 2,
+            angle: 180, 
+            size: 2, 
+            speed: 1, 
+            max_speed: 2,
+            acceleration: 1, 
+            brake_thrusters: 1,
+            agility: 2,
+            hitpoints: 200,
+            armor: 100,
+            shields: 20,
+            weapons: [
+                {
+                    name: "Medium Projectile Cannon",
+                    type: PROJECTILE,
+                    use_ammo: true,
+                    ammo: 100,
+                    salvo_size: 5,
+                    charge: 0,
+                    recharge_rate: 6,
+                    damage: 3,
+                    range: 100
+                },
+                {
+                    name: "Medium Projectile Cannon",
+                    type: PROJECTILE,
+                    use_ammo: true,
+                    ammo: 100,
+                    salvo_size: 5,
+                    charge: 0,
+                    recharge_rate: 2,
+                    damage: 3,
+                    range: 100
+                },
+            ],
+        }));
+        this.allSpacecraft[1].setPilot(this.allPilots[1]);
+         
     }
 }
 

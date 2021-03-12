@@ -34,10 +34,7 @@ class Spacecraft extends Phaser.GameObjects.Sprite {
         this.calculateTargetingPoints();
         this.status = WAITING;
 
-        this.pilot_id = null;
-        if("pilot_id" in config) {
-            this.pilot_id = config.pilot_id;
-        }
+        this.pilot = null;
 
         config.scene.add.existing(this);
         this.setInteractive();
@@ -49,6 +46,10 @@ class Spacecraft extends Phaser.GameObjects.Sprite {
         // alternatively draw a green square behind this?
         this.emitter = EventDispatcher.getInstance();
         this.emitter.emit("CRAFT_CLICKED", this);
+    }
+
+    setPilot(new_pilot) {
+        this.pilot = new_pilot
     }
 
     calculateTargetingPoints() {
@@ -195,6 +196,11 @@ class Spacecraft extends Phaser.GameObjects.Sprite {
                 }
             });
         }
+    }
+
+    remove() {
+        this.pilot.destroy();
+        this.destroy();
     }
 }
 
