@@ -176,7 +176,8 @@ class Spacecraft extends Phaser.GameObjects.Sprite {
     fireWeapon(index) {
         let weapon = this.weapons[index];
         
-        weapon.charge = 0;
+        weapon.charge = Math.max(0, weapon.charge - weapon.power_cost);
+        weapon.current_cooldown = weapon.cooldown;
         if(weapon.use_ammo) {
             weapon.ammo = Math.max(0, weapon.ammo - weapon.salvo_size);
         }
@@ -193,6 +194,10 @@ class Spacecraft extends Phaser.GameObjects.Sprite {
             this.weapons.forEach(function (weapon) {
                 if(weapon.charge < 100) {
                     weapon.charge = Math.min(100, weapon.charge + weapon.recharge_rate);
+                }
+
+                if(weapon.current_cooldown > 0) {
+                    weapon.current_cooldown -= 1;
                 }
             });
         }

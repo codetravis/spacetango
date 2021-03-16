@@ -15,6 +15,11 @@ class Pilot extends Phaser.GameObjects.Sprite {
         this.guts = config.guts;
         this.composure = config.composure;
 
+        this.effective_control = config.control;
+        this.effective_gunnery = config.gunnery;
+        this.effective_guts = config.guts;
+        this.effective_composure = config.composure;
+
         config.scene.add.existing(this);
         this.setInteractive();
         this.on('pointerdown', this.clicked, this);

@@ -326,19 +326,21 @@ class MainScene extends Phaser.Scene {
         for(let j = 0; j < spacecraft.weapons.length; j++) {
             // fire fully charged weapons
             let weapon = spacecraft.weapons[j];
-            if(weapon.charge == 100) {
+            if(weapon.charge >= weapon.power_cost && weapon.current_cooldown === 0) {
                 if(weapon.range >= final_target_distance) {
                     if(!weapon.use_ammo || weapon.ammo > 0) {
                         spacecraft.fireWeapon(j);
                         console.log("Spacecraft " + spacecraft.id + "attacked target " + final_target.id + " with weapon " + weapon.name);
                         // roll for hit
-                        let hit_chance = 1; //Math.random() * final_target.size;
+                        let base_hit_chance = 0.15 + spacecraft.pilot.effective_gunnery * 0.05 + final_target.size * 0.05;
+                        let hit = Math.random() <= base_hit_chance;
                         // roll for defender evade
-                        let evade_chance = 0; //Math.random();
+                        let evade_chance = final_target.pilot.effective_control * 0.05;
+                        let evade = Math.random() < evade_chance;
                         // assign damage to defender on hit
-                        if(hit_chance > evade_chance) {
+                        if(hit && !evade) {
                             final_target.takeDamage(weapon.damage * weapon.salvo_size);
-                            //console.log("Target at range " + final_target_distance + " took damage");
+                            console.log("Target at range " + final_target_distance + " took damage");
                         }
                     }
                 }
@@ -437,6 +439,9 @@ class MainScene extends Phaser.Scene {
                     ammo: 0,
                     salvo_size: 1,
                     charge: 0,
+                    power_cost: 30,
+                    cooldown: 10,
+                    current_cooldown: 0,
                     recharge_rate: 4,
                     damage: 10,
                     range: 200,
@@ -468,10 +473,13 @@ class MainScene extends Phaser.Scene {
                     type: PROJECTILE,
                     use_ammo: true,
                     ammo: 100,
-                    salvo_size: 5,
+                    salvo_size: 4,
                     charge: 0,
-                    recharge_rate: 6,
-                    damage: 3,
+                    power_cost: 0,
+                    cooldown: 20,
+                    current_cooldown: 0,
+                    recharge_rate: 0,
+                    damage: 6,
                     range: 100
                 },
                 {
@@ -479,10 +487,13 @@ class MainScene extends Phaser.Scene {
                     type: PROJECTILE,
                     use_ammo: true,
                     ammo: 100,
-                    salvo_size: 5,
+                    salvo_size: 4,
                     charge: 0,
-                    recharge_rate: 2,
-                    damage: 3,
+                    power_cost: 0,
+                    cooldown: 20,
+                    current_cooldown: 0,
+                    recharge_rate: 0,
+                    damage: 6,
                     range: 100
                 },
             ],
