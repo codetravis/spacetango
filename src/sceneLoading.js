@@ -1,5 +1,6 @@
 import testFighterImg from './assets/images/test_fighter.svg';
 import testOldFighterImg from './assets/images/test_old_fighter.svg';
+import razorwindFighterImg from './assets/images/razorwind_fighter.png';
 import straightMoveImg from './assets/images/straight_move.svg';
 import driftMoveImg from './assets/images/drift_move.svg';
 import flipMoveImg from './assets/images/flip_move.svg';
@@ -18,6 +19,7 @@ class LoadingScene extends Phaser.Scene {
     preload() {
         this.load.image("test_fighter", testFighterImg);
         this.load.image("test_old_fighter", testOldFighterImg);
+        this.load.image("razorwind_fighter", razorwindFighterImg);
         this.load.image('STRAIGHT_move_button', straightMoveImg);
         this.load.image('FLIP_move_button', flipMoveImg);
         this.load.image('DRIFT_move_button', driftMoveImg);
